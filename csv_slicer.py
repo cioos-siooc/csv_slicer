@@ -1,4 +1,6 @@
+from datetime import timedelta
 import os
+import importlib
 import pandas as pd
 import argparse
 from pathlib import Path
@@ -13,16 +15,24 @@ def main(prog_args):
     except ValueError:
         skip_rows = map(int, prog_args.data_begins.strip().split(","))
 
+    header_row = int(prog_args.names.strip())
+    if header_row < 0:
+        header_row = None
+
     # Open source file using provided source path, header row number and skip 
     # rows arguments
     csv_data = pd.read_csv(
         filepath_or_buffer=prog_args.source.strip(),
-        header=int(prog_args.names.strip()),
+        header=header_row,
         skiprows=skip_rows,
     )
 
     # Remove "Unnamed" (i.e. blank columns with no header name) columns from CSV
     csv_data = csv_data.loc[:, ~csv_data.columns.str.contains('^Unnamed')]
+
+    if prog_args.column_names:
+        column_names = prog_args.column_names.strip().split(",")
+        csv_data.columns = column_names
 
     # Write files out in perscribed format
     write_files(prog_args, csv_data)
@@ -34,22 +44,38 @@ def write_files(prog_args, csv_data):
     # Get index column from program args
     index_col = prog_args.column.strip()
     
+    #importlib.import_module(('methods/%s.py' % split_method))
+
     # Currently only method of slicing is "date", translate index into date/time
     if split_method == 'date':
-        csv_data[index_col] = pd.to_datetime(csv_data[index_col])
+        if prog_args.adjust_tz: # if datetime is not UTC adjust accordingly
+            adjust_tz, destination_tz = prog_args.adjust_tz.strip().split(":")
+            
+            csv_data[index_col] = pd.to_datetime(csv_data[index_col]) + timedelta(hours=float(adjust_tz))
+                    
+            # set index, necessary grouping rows by interval format
+            csv_data.set_index(index_col, inplace=True)
 
-    # generate path names using output path and file name format arguments
-    file_path = '%s/%s' % (prog_args.output.strip(), prog_args.filename_format.strip())
-    
-    # set index, necessary grouping rows by interval format
-    csv_data.set_index(index_col, inplace=True)
+            csv_data.index = csv_data.index.tz_localize(destination_tz)
+        else: # assume datetime is UTC
+            csv_data[index_col] = pd.to_datetime(csv_data[index_col])
+        
+            # set index, necessary grouping rows by interval format
+            csv_data.set_index(index_col, inplace=True)
 
-    # create list of data files and their full paths
-    log_files = csv_data.index.strftime(file_path).unique()
+        # generate path names using output path and file name format arguments
+        file_path = '%s/%s' % (prog_args.output.strip(), prog_args.filename_format.strip())
 
-    # create a list of unique days present in the master dataframe
-    # use this to create subsets of each days worth of data
-    log_file_index = csv_data.index.strftime(interval_format).unique()
+        # create list of data files and their full paths
+        log_files = csv_data.index.strftime(file_path).unique()
+
+        # create a list of unique days present in the master dataframe
+        # use this to create subsets of each days worth of data
+        log_file_index = csv_data.index.strftime(interval_format).unique()
+
+    else:
+        print("ERROR: Unable to create index.")
+        log_file_index = []
 
     # Loop through list of log file names
     for index, log_file in enumerate(log_files):
@@ -141,10 +167,24 @@ if __name__ == "__main__":
     )
 
     parser.add_argument(
+        "-t",
+        "--column-names",
+        help="A comma seperated list of values that will be assigned to the columns in order",
+        action="store",
+    )
+
+    parser.add_argument(
         "-d",
         "--data-begins",
         help="Row that contains beginning of data, default: 1",
         default="1",
+        action="store",
+    )
+
+    parser.add_argument(
+        "-z",
+        "--adjust-tz",
+        help="Specifies how date/times should be adjusted, in hours, and what timezone the data should be localized to.  Example: 3.5:UTC",
         action="store",
     )
 
