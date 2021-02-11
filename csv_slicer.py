@@ -131,7 +131,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-s",
         "--source",
-        help="Source CSV file to be sliced into smaller files.",
+        help="Source CSV file to be sliced into smaller files.  This argument also accepts wildcards to allow the processing of multiple files in one call.  NOTE: All files should have the same CSV structure.",
         action="store",
     )
 
