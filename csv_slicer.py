@@ -6,6 +6,14 @@ import argparse
 from pathlib import Path
 
 def main(prog_args):
+    file_source = prog_args.source.strip()
+    src_dir = os.path.dirname(file_source)
+    file_path = os.path.basename(file_source)
+
+    for source_file in Path(src_dir).glob(file_path):
+        process_source_file(prog_args, source_file)
+
+def process_source_file(prog_args, source_file):
     # Check if headers and data begins at a set row
     try:
         skip_rows = int(prog_args.data_begins)
@@ -22,7 +30,7 @@ def main(prog_args):
     # Open source file using provided source path, header row number and skip 
     # rows arguments
     csv_data = pd.read_csv(
-        filepath_or_buffer=prog_args.source.strip(),
+        filepath_or_buffer=source_file,
         header=header_row,
         skiprows=skip_rows,
     )
@@ -36,7 +44,6 @@ def main(prog_args):
 
     # Write files out in perscribed format
     write_files(prog_args, csv_data)
-    
 
 def write_files(prog_args, csv_data):
     split_method, interval_format = prog_args.method.strip().split(':')
