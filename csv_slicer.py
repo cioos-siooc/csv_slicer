@@ -165,7 +165,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-k",
         "--keep-empty",
-        help="Override default behaviour to drop unnamed columns from final output.",
+        help="Override default behaviour to drop unnamed columns from final output.  NOTE: The process occurs before the column names are assigned.  As a result, this setting can complement or interfere with the column names option depending on how it's used.",
         action="store_true",
     )
 
@@ -188,7 +188,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         "--column-names",
-        help="A comma seperated list of values that will be assigned to the columns in order",
+        help="A comma seperated list of values that will be assigned to the columns in order.  NOTE:  This operation occurs AFTER the dropping of \"Unnamed\" columns.  If you have columns, without names, that you want to assign using this option, use the --keep-empty flag to ensure they aren't dropped.",
         action="store",
     )
 
