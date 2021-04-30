@@ -18,6 +18,10 @@ def process_source_file(prog_args, source_file):
     try:
         skip_rows = int(prog_args.data_begins)
 
+    # Default is None, keep it that way
+    except TypeError:
+        skip_rows = prog_args.data_begins
+
     # If CSV file is more complex and specific rows should be skipped then 
     # accept a list of 0-based row numbers that should be skipped instead
     except ValueError:
@@ -195,8 +199,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--data-begins",
-        help="Row that contains beginning of data, default: 1",
-        default="1",
+        help="Row that contains beginning of data, default: None",
+        default=None,
         action="store",
     )
 
