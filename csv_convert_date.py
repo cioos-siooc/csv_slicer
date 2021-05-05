@@ -37,7 +37,7 @@ def process_source_file(prog_args, source_file):
         parse_dates_arg = json.loads(prog_args.timestamp.strip())
     except JSONDecodeError as ex:
         print(ex)
-        parse_dates_arg = prog_args.timestamp.strip()
+        parse_dates_arg = prog_args.timestamp.strip().lower() == 'true'
 
     index_col = prog_args.column.strip()
 
@@ -135,7 +135,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f",
         "--filename_format",
-        help="How output file names should be formatted, can and should contain date formatting string.  Example: test_data_%Y-%m-%d.csv",
+        help="How output file names should be formatted, can and should contain date formatting string.  Example: test_data_%%Y-%%m-%%d.csv",
         action="store",
     )
 
@@ -158,8 +158,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         "--timestamp",
-        help="Column or list of columns that can be combined to create a timestamp. NOTE: accepts string forms acceptable to pandas read_csv parse_dates option.",
-        default="timestamp",
+        help="Boolean to tell pandas to parse dates (default: true) or a JSON formatted list of columns that can be combined to create a timestamp. NOTE: refer to the pandas read_csv() parse_dates option for further details.",
+        default="true",
         action="store",
     )
 
@@ -175,7 +175,7 @@ if __name__ == "__main__":
         "-i",
         "--in-format",
         help="Format of the timestamp column for date/time parsing",
-        default="%Y-%m-%dT%H:%i:%s.000Z",
+        default="%%Y-%%m-%%dT%%H:%%M:%%S.000Z",
         action="store",
     )
 
@@ -183,7 +183,7 @@ if __name__ == "__main__":
         "-w",
         "--out-format",
         help="Output format of the timestamp column after it has been parsed",
-        default="%Y-%m-%dT%H:%i:%s.000Z",
+        default="%%Y-%%m-%%dT%%H:%%M:%%S.000Z",
         action="store",
     )
 
