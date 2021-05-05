@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime
+import re
 import os
 import json
 from json import JSONDecodeError
@@ -10,8 +11,6 @@ def main(prog_args):
     file_source = prog_args.source_file.strip()
     src_dir = os.path.dirname(file_source)
     file_path = os.path.basename(file_source)
-
-    print(prog_args)
 
     for source_file in Path(src_dir).glob(file_path):
         process_source_file(prog_args, source_file)
@@ -36,7 +35,8 @@ def process_source_file(prog_args, source_file):
 
     try:
         parse_dates_arg = json.loads(prog_args.timestamp.strip())
-    except JSONDecodeError:
+    except JSONDecodeError as ex:
+        print(ex)
         parse_dates_arg = prog_args.timestamp.strip()
 
     index_col = prog_args.column.strip()
@@ -52,7 +52,7 @@ def process_source_file(prog_args, source_file):
         keep_date_col=True
     )
 
-    csv_data[index_col] = csv_data[index_col].map(lambda date_str: datetime.strptime(date_str, prog_args.in_format.strip()))
+    csv_data[index_col] = csv_data[index_col].map(lambda date_str: parse_dates(date_str, prog_args))
 
     if prog_args.adjust_tz: # if datetime is not UTC adjust accordingly
         adjust_tz, destination_tz = prog_args.adjust_tz.strip().split(":")
@@ -69,6 +69,35 @@ def process_source_file(prog_args, source_file):
 
     # Write files out in perscribed format
     write_files(prog_args, csv_data)
+
+def parse_dates(date_str, prog_args):
+    new_dt = None
+    parse_format = prog_args.in_format.strip()
+
+    try:
+        new_dt = datetime.strptime(date_str, parse_format)
+    except ValueError:
+        # Correct for 2400 time, which is actually 12AM the next day
+        print("Invalid Date/time string and parsing format: %s | %s" % (date_str, parse_format))
+        
+        find_time = None
+        replace_time = None
+
+        # Two common ways that this problematic time may be represented
+        if date_str.find('2400') > -1:
+            find_time = '2400'
+            replace_time = '0000'
+        elif date_str.find('24:00') > -1:
+            find_time = '24:00'
+            replace_time = '00:00'
+
+        date_str = re.sub(find_time, replace_time, date_str)
+        new_dt = datetime.strptime(date_str, parse_format)
+        new_dt = new_dt + timedelta(days=1)
+
+        print("Auto-correcting for unparsable time: %s" % (new_dt))
+
+    return new_dt
 
 def write_files(prog_args, csv_data):
     print(csv_data.info())

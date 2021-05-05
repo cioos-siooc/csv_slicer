@@ -52,6 +52,9 @@ def process_source_file(prog_args, source_file):
         column_names = prog_args.column_names.strip().split(",")
         csv_data.columns = column_names
 
+    if prog_args.drop_columns:
+        csv_data.drop(labels=prog_args.drop_columns.strip().split(","), axis=1, inplace=True)
+
     # Write files out in perscribed format
     write_files(prog_args, csv_data)
 
@@ -199,8 +202,15 @@ if __name__ == "__main__":
     parser.add_argument(
         "-d",
         "--data-begins",
-        help="Row that contains beginning of data, default: None",
+        help="Row number that contains beginning of data (zero-based).  If the file is more complex and requires multiple rows to be skipped a comma seperated list can be supplied, default: None",
         default=None,
+        action="store",
+    )
+
+    parser.add_argument(
+        "-x",
+        "--drop-columns",
+        help="List of columns to drop from the output",
         action="store",
     )
 
