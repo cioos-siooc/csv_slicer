@@ -158,7 +158,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-f",
         "--filename_format",
-        help="How output file names should be formatted, can and should contain date formatting string.  Example: test_data_%Y-%m-%d.csv",
+        help="How output file names should be formatted, can and should contain date formatting string.  Example: test_data_%%Y-%%m-%%d.csv",
         action="store",
     )
 
@@ -179,8 +179,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m",
         "--method",
-        help="How column should be used to split data by date.  Specify in terms for python date formatting string. Example: date:%Y%m%d",
-        default="date:%Y%m%d",
+        help="How column should be used to split data by date.  Specify in terms for python date formatting string. Example: date:%%Y%%m%%d",
+        default="date:%%Y%%m%%d",
         action="store",
     )
 
