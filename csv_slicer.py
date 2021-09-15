@@ -31,12 +31,25 @@ def process_source_file(prog_args, source_file):
     if header_row < 0:
         header_row = None
 
+    try:
+        index_column, rename_index = prog_args.column.strip().split(":")
+
+    except ValueError:
+        index_column = prog_args.column.strip()
+        rename_index = None
+
+    except AttributeError:
+        index_column = prog_args.column
+        rename_index = None
+
     # Open source file using provided source path, header row number and skip 
     # rows arguments
     csv_data = pd.read_csv(
         filepath_or_buffer=source_file,
         header=header_row,
         skiprows=skip_rows,
+        parse_dates=True,
+        index_col=index_column
     )
 
     # Remove "Unnamed" (i.e. blank columns with no header name) columns from CSV by default,
@@ -47,6 +60,9 @@ def process_source_file(prog_args, source_file):
     #       CSV that has an empty column name
     if not prog_args.keep_empty:
         csv_data = csv_data.loc[:, ~csv_data.columns.str.contains('^Unnamed')]
+
+    if rename_index:
+        csv_data.index.name = rename_index
 
     if prog_args.column_names:
         column_names = prog_args.column_names.strip().split(",")
@@ -62,8 +78,19 @@ def write_files(prog_args, csv_data):
     split_method, interval_format = prog_args.method.strip().split(':')
 
     # Get index column from program args
-    index_col = prog_args.column.strip()
-    
+    try:
+        index_column, rename_index = prog_args.column.strip().split(":")
+    except ValueError:
+        index_column = prog_args.column.strip()
+        rename_index = None
+
+    except AttributeError:
+        index_column = prog_args.column
+        rename_index = None
+
+    if rename_index:
+        index_column = rename_index
+
     #importlib.import_module(('methods/%s.py' % split_method))
 
     # Currently only method of slicing is "date", translate index into date/time
@@ -71,17 +98,30 @@ def write_files(prog_args, csv_data):
         if prog_args.adjust_tz: # if datetime is not UTC adjust accordingly
             adjust_tz, destination_tz = prog_args.adjust_tz.strip().split(":")
             
-            csv_data[index_col] = pd.to_datetime(csv_data[index_col]) + timedelta(hours=float(adjust_tz))
-                    
-            # set index, necessary grouping rows by interval format
-            csv_data.set_index(index_col, inplace=True)
+            # if index is not already a DateTimeIndex then recreate it as one
+            if not isinstance(csv_data.index, pd.DatetimeIndex):
+                csv_data[index_column] = pd.to_datetime(csv_data[index_column]) + timedelta(hours=float(adjust_tz))
+                        
+                # set index, necessary grouping rows by interval format
+                csv_data.set_index(index_column, inplace=True)
 
-            csv_data.index = csv_data.index.tz_localize(destination_tz)
-        else: # assume datetime is UTC
-            csv_data[index_col] = pd.to_datetime(csv_data[index_col])
+                csv_data.index = csv_data.index.tz_localize(destination_tz)
+            # index is already a DateTimeIndex but timezones need to be adjusted
+            else:
+                # DateTimeIndex can be timezone aware (has one) or timezone 
+                # naive (doesn't have a tz)
+                try:
+                    csv_data.index = csv_data.index.tz_convert(destination_tz)
+                except TypeError as err:
+                    new_index = csv_data.index + timedelta(hours=float(adjust_tz))
+
+                    csv_data.index = new_index.tz_localize(destination_tz)
+
+        elif not isinstance(csv_data.index, pd.DatetimeIndex):
+            csv_data[index_column] = pd.to_datetime(csv_data[index_column])
         
             # set index, necessary grouping rows by interval format
-            csv_data.set_index(index_col, inplace=True)
+            csv_data.set_index(index_column, inplace=True)
 
         # generate path names using output path and file name format arguments
         file_path = '%s/%s' % (prog_args.output.strip(), prog_args.filename_format.strip())
@@ -93,6 +133,10 @@ def write_files(prog_args, csv_data):
         # use this to create subsets of each days worth of data
         log_file_index = csv_data.index.strftime(interval_format).unique()
 
+    # Split source file by an arbitrary number of rows
+    elif  split_method == 'chunk':
+        pass
+
     else:
         print("ERROR: Unable to create index.")
         log_file_index = []
@@ -103,7 +147,7 @@ def write_files(prog_args, csv_data):
 
         if Path(log_file).exists():
             # load exisitng data
-            df_tmp = pd.read_csv(log_file, index_col=index_col, parse_dates=True)
+            df_tmp = pd.read_csv(log_file, index_col=index_column, parse_dates=True)
 
             # add all data from this day to existing dataframe
             df_tmp = df_tmp.append(csv_data.loc[date_key], sort=False)
@@ -133,7 +177,7 @@ def write_files(prog_args, csv_data):
             os.makedirs(os.path.dirname(log_file))
 
         # write out to data file
-        df_write.to_csv(log_file)
+        df_write.to_csv(log_file, date_format=prog_args.date_format_out)
 
         # destroy temporary DataFrames
         df_tmp = None
@@ -167,6 +211,7 @@ if __name__ == "__main__":
         "--column",
         help="Column name that contains the date/time information to slice the data on.",
         action="store",
+        default=0
     )
 
     parser.add_argument(
@@ -179,8 +224,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m",
         "--method",
-        help="How column should be used to split data by date.  Specify in terms for python date formatting string. Example: date:%%Y%%m%%d",
-        default="date:%%Y%%m%%d",
+        help="How column should be used to split data by date.  Specify in terms for python date formatting string. Example: date:%Y%m%d",
+        default="date:%Y%m%d",
         action="store",
     )
 
@@ -219,6 +264,13 @@ if __name__ == "__main__":
         "--adjust-tz",
         help="Specifies how date/times should be adjusted, in hours, and what timezone the data should be localized to.  Example: 3.5:UTC",
         action="store",
+    )
+
+    parser.add_argument(
+        "--date-format-out",
+        help="Specifies how date/times should be formatted in the resulting files.  By default, this uses ISO 8601: %Y-%m-%dT%H:%M:%S%z",
+        action="store",
+        default='%Y-%m-%dT%H:%M:%S%z'
     )
 
     prog_args = parser.parse_args()
