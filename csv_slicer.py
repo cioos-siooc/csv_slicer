@@ -71,7 +71,7 @@ def process_source_file(prog_args, source_file):
     if prog_args.drop_columns:
         csv_data.drop(labels=prog_args.drop_columns.strip().split(","), axis=1, inplace=True)
 
-    # Write files out in perscribed format
+    # Write files out in prescribed format
     write_files(prog_args, csv_data)
 
 def write_files(prog_args, csv_data):
@@ -146,7 +146,7 @@ def write_files(prog_args, csv_data):
         date_key = log_file_index[index]
 
         if Path(log_file).exists():
-            # load exisitng data
+            # load existing data
             df_tmp = pd.read_csv(log_file, index_col=index_column, parse_dates=True)
 
             # add all data from this day to existing dataframe
@@ -185,6 +185,7 @@ def write_files(prog_args, csv_data):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
+
     parser.add_argument(
         "source_file",
         help="Source CSV file to be sliced into smaller files.  This argument also accepts wildcards to allow the processing of multiple files in one call.  NOTE: All files should have the same CSV structure.",
@@ -209,9 +210,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--column",
-        help="Column name that contains the date/time information to slice the data on.",
+        help="Column name that contains the date/time information to slice the data on.  Can accept an integer (zero-based), column name or a column name with what it should be renamed to (old_name:new_name).  Default: 0",
         action="store",
-        default=0
+        default=0,
     )
 
     parser.add_argument(
@@ -224,7 +225,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-m",
         "--method",
-        help="How column should be used to split data by date.  Specify in terms for python date formatting string. Example: date:%Y%m%d",
+        help="How column should be used to split data by date.  Specify in terms for python date formatting string. Example: date:%%Y%%m%%d",
         default="date:%Y%m%d",
         action="store",
     )
@@ -240,14 +241,14 @@ if __name__ == "__main__":
     parser.add_argument(
         "-t",
         "--column-names",
-        help="A comma seperated list of values that will be assigned to the columns in order.  NOTE:  This operation occurs AFTER the dropping of \"Unnamed\" columns.  If you have columns, without names, that you want to assign using this option, use the --keep-empty flag to ensure they aren't dropped.",
+        help="A comma separated list of values that will be assigned to the columns in order.  NOTE:  This operation occurs AFTER the dropping of \"Unnamed\" columns.  If you have columns, without names, that you want to assign using this option, use the --keep-empty flag to ensure they aren't dropped.",
         action="store",
     )
 
     parser.add_argument(
         "-d",
         "--data-begins",
-        help="Row number that contains beginning of data (zero-based).  If the file is more complex and requires multiple rows to be skipped a comma seperated list can be supplied, default: None",
+        help="Row number that contains beginning of data (zero-based).  If the file is more complex and requires multiple rows to be skipped a comma separated list can be supplied, default: None",
         default=None,
         action="store",
     )
@@ -268,11 +269,11 @@ if __name__ == "__main__":
 
     parser.add_argument(
         "--date-format-out",
-        help="Specifies how date/times should be formatted in the resulting files.  By default, this uses ISO 8601: %Y-%m-%dT%H:%M:%S%z",
+        help="Specifies how date/times should be formatted in the resulting files.  By default, this uses ISO 8601: %%Y-%%m-%%dT%%H:%%M:%%S%%z",
         action="store",
-        default='%Y-%m-%dT%H:%M:%S%z'
+        default='%Y-%m-%dT%H:%M:%S%z',
     )
 
     prog_args = parser.parse_args()
-
+    
     main(prog_args)

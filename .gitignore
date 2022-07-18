@@ -128,3 +128,5 @@ dmypy.json
 /test_data
 /venv
 *.code-workspace
+test_date_parse.py
+process_archive.bat
