@@ -51,7 +51,11 @@ def process_source_file(prog_args, source_file):
         parse_dates=True,
         index_col=index_column
     )
-
+    
+    if prog_args.verbose:
+        print("Initial state of data...")
+        print(csv_data)
+    
     # Remove "Unnamed" (i.e. blank columns with no header name) columns from CSV by default,
     # keep them if specifically specified by the user
     # 
@@ -70,6 +74,10 @@ def process_source_file(prog_args, source_file):
 
     if prog_args.drop_columns:
         csv_data.drop(labels=prog_args.drop_columns.strip().split(","), axis=1, inplace=True)
+    
+    if prog_args.verbose:
+        print("State of data before writing out files...")
+        print(csv_data)
 
     # Write files out in prescribed format
     write_files(prog_args, csv_data)
@@ -141,6 +149,12 @@ def write_files(prog_args, csv_data):
         print("ERROR: Unable to create index.")
         log_file_index = []
 
+    
+    if prog_args.verbose:
+        print("List of files to be generated...")
+        print(log_file_index)
+
+
     # Loop through list of log file names
     for index, log_file in enumerate(log_files):
         date_key = log_file_index[index]
@@ -151,8 +165,17 @@ def write_files(prog_args, csv_data):
 
             # add all data from this day to existing dataframe
             df_tmp = df_tmp.append(csv_data.loc[date_key], sort=False)
-
-            df_tmp.index = df_tmp.index.floor('T')
+            
+            # Smooths out date/time indexes that are close and should be 
+            # considered the same sample time but may vary because of how 
+            # separate instruments record the interval.
+            # 
+            # https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DatetimeIndex.floor.html
+            # https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases
+            if prog_args.smooth_timestamps:
+                if prog_args.verbose:
+                    print("Smoothing timestamps...in pre-existing source file: ", log_file)
+                df_tmp.index = df_tmp.index.floor(prog_args.frequency)
 
             # Remove duplicates.
             # 
@@ -272,6 +295,25 @@ if __name__ == "__main__":
         help="Specifies how date/times should be formatted in the resulting files.  By default, this uses ISO 8601: %%Y-%%m-%%dT%%H:%%M:%%S%%z",
         action="store",
         default='%Y-%m-%dT%H:%M:%S%z',
+    )
+
+    parser.add_argument(
+        "--frequency",
+        help="Specifies frequency interval to be used for index.floor() of a pandas DataFrame to handle duplicate entires, default: S, more info here: https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases",
+        action="store",
+        default='S',
+    )
+
+    parser.add_argument(
+        "--smooth_timestamps",
+        help="Smooths out timestamps to the specified interval when dealing with minor variances in timestamps",
+        action="store_true",
+    )
+
+    parser.add_argument(
+        "--verbose",
+        help="Display more information about how data is being transformed/sliced at various stages in the process.",
+        action="store_true",
     )
 
     prog_args = parser.parse_args()
