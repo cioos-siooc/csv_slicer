@@ -33,10 +33,14 @@ def main(prog_args):
     for line in source:
         # Separate NMEA Checksum from final value
         if prog_args.nema_checksum:
-             line = line.replace("*", ",*", 1)
-             line = line.replace("@&2C", ",")
+            print("Fixing NMEA checksum...")
+            line = line.replace("*", prog_args.delimiter + "*", 1)
 
-        row = line.strip().split(",")
+        for sec_delimiter in prog_args.secondary_delimiters:
+            print(f"Processing secondary delimiter: {sec_delimiter}")
+            line = line.replace(sec_delimiter, prog_args.delimiter)
+
+        row = line.strip().split(prog_args.delimiter)
 
                     
         # https://stackoverflow.com/questions/20003290/output-different-precision-by-column-with-pandas-dataframe-to-csv
@@ -129,6 +133,28 @@ if __name__ == "__main__":
         "--nema-checksum",
         help="Accounts for NMEA checksums at he end of a line, which need to be split with an '*' to separate the final value from the checksum",
         action="store_true",
+    )
+
+    parser.add_argument(
+        "-s",
+        "--secondary-delimiters",
+        help="""A list of secondary delimiters to prepare the lines before the 
+        final parsing of the row using the primary delimiter.  This step 
+        effectively does a string replacement of these secondary delimiters 
+        with the primary one.  More than 1 can be specified separated by spaces 
+        and each surrounded by quotes.
+        Example: --secondary-delimiters "&" "@2C#" "|" "/"
+        """,
+        nargs='+',
+        action="store",
+    )
+
+    parser.add_argument(
+        "-d",
+        "--delimiter",
+        help="The character (or characters) that should be used to split rows into columns.  Default: ,",
+        action="store",
+        default=","
     )
 
     prog_args = parser.parse_args()
