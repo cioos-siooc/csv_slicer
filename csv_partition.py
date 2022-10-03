@@ -31,14 +31,26 @@ def main(prog_args):
     
 
     for line in source:
+        # Separate NMEA Checksum from final value
+        if prog_args.nema_checksum:
+             line = line.replace("*", ",*", 1)
+             line = line.replace("@&2C", ",")
+
         row = line.strip().split(",")
-        
+
+                    
         # https://stackoverflow.com/questions/20003290/output-different-precision-by-column-with-pandas-dataframe-to-csv
         for column, format_str in formats.items():
             col_int = int(column)
             row[col_int] = prep_value(value=row[col_int], format_str=format_str)
 
-        column = row[partition_column]
+
+        try:
+            column = row[partition_column]
+        except IndexError as ie:
+            print(f"Index of partition column ({partition_column}) could not be located - skipping...")
+            print(f"Line content: {row}")
+            continue
 
         if column in output_files:
             output_files[column].append(row)
@@ -83,7 +95,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-c",
         "--column",
-        help="Column that contains unique values to partition into sepearate files",
+        help="Index of column that contains unique values to partition into separate files (zero-based).  Default: 0",
         default=0,
         type=int,
         action="store",
@@ -100,16 +112,23 @@ if __name__ == "__main__":
     parser.add_argument(
         "-l",
         "--labels",
-        help="A JSON formatted list of column labels coresponding to 1 or more of the values related to the partition column. Example: {\"value1\":[\"col_a\",\"col_b\", \"col_c\"], ... ,\"valueN\":[\"label_a\",\"label_b\"]}",
+        help="A JSON formatted list of column labels corresponding to 1 or more of the values related to the partition column. Example: {\"value1\":[\"col_a\",\"col_b\", \"col_c\"], ... ,\"valueN\":[\"label_a\",\"label_b\"]}",
         action="store",
     )
 
     parser.add_argument(
         "-o",
         "--output",
-        help="Path to store generated output files",
+        help="Path to store generated output files.  Default: .",
         default=".",
         action="store",
+    )
+
+    parser.add_argument(
+        "-n",
+        "--nema-checksum",
+        help="Accounts for NMEA checksums at he end of a line, which need to be split with an '*' to separate the final value from the checksum",
+        action="store_true",
     )
 
     prog_args = parser.parse_args()
