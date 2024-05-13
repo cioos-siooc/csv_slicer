@@ -4,6 +4,8 @@ import importlib
 import pandas as pd
 import argparse
 from pathlib import Path
+import csv
+import yaml
 
 def main(prog_args):
     file_source = prog_args.source_file.strip()
@@ -42,6 +44,22 @@ def process_source_file(prog_args, source_file):
         index_column = prog_args.column
         rename_index = None
 
+    
+
+    dtypes={}
+    if prog_args.dtype_file:
+        dtypes_config = {}
+        if os.path.exists(prog_args.dtype_file):
+            with open(prog_args.dtype_file) as f:
+                dtypes_config = yaml.load(f, Loader=yaml.FullLoader)
+            with open(source_file, 'r') as f:
+                dataset_columns = csv.DictReader(f).fieldnames
+                for col in dataset_columns:
+                    if col in dtypes_config and not dtypes_config[col]=='datetime64[ns]':
+                        dtypes[col] = dtypes_config[col]
+        else:
+            print("Path to dtype config does not exist")
+
     # Open source file using provided source path, header row number and skip 
     # rows arguments
     csv_data = pd.read_csv(
@@ -49,7 +67,8 @@ def process_source_file(prog_args, source_file):
         header=header_row,
         skiprows=skip_rows,
         parse_dates=True,
-        index_col=index_column
+        index_col=index_column,
+        dtype=dtypes
     )
     
     if prog_args.verbose:
@@ -283,6 +302,13 @@ if __name__ == "__main__":
         action="store",
     )
 
+    parser.add_argument(
+        "-y",
+        "--dtype-file",
+        help="Provide a yaml dictionary file that specifies the data types for each column to avoid pandas from defaulting to object",
+        action="store",
+    )
+        
     parser.add_argument(
         "-z",
         "--adjust-tz",
