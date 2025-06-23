@@ -71,7 +71,7 @@ def process_source_file(prog_args, source_file):
         dtype=dtypes
     )
 
-    print("Length of data to slice: " + len(csv_data))
+    print(len(csv_data))
     
     if prog_args.verbose:
         print("Initial state of data...")
@@ -208,7 +208,7 @@ def write_files(prog_args, csv_data):
             # subset of the dataframe with duplicate indexes (timestamps) 
             # removed.
             # TODO: Add code to not hard code this
-            df_tmp.set_index(['waterbody', 'station'], append=True, inplace=True)
+            df_tmp.set_index(['waterbody', 'station', 'sensor_serial_number'], append=True, inplace=True)
             df_tmp = df_tmp[~df_tmp.index.duplicated(keep='first')]
         else:
             # if no current file exists then create a dataframe from a subset
