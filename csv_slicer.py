@@ -209,7 +209,11 @@ def write_files(prog_args, csv_data):
             # removed.
             # TODO: Add code to not hard code this
             df_tmp.set_index(['waterbody', 'station', 'sensor_serial_number'], append=True, inplace=True)
-            df_tmp = df_tmp[~df_tmp.index.duplicated(keep='first')]
+            df_duplicated = df_tmp.index.duplicated(keep='first')
+            if(df_tmp[df_duplicated].size > 0):
+                print(df_tmp[df_duplicated])
+            df_tmp = df_tmp[~df_duplicated]
+            #df_tmp = df_tmp[~df_tmp.index.duplicated(keep='first')]
         else:
             # if no current file exists then create a dataframe from a subset
             # of the master dataframe and write its contents out to the file
