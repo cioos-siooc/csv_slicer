@@ -1,5 +1,5 @@
 from datetime import timedelta
-import os
+import os   
 import importlib
 import pandas as pd
 import argparse
@@ -185,8 +185,8 @@ def write_files(prog_args, csv_data):
             df_tmp = pd.read_csv(log_file, index_col=index_column, parse_dates=True)
 
             # add all data from this day to existing dataframe
-            df_tmp = df_tmp.append(csv_data.loc[date_key], sort=False)
-            
+            #df_tmp = df_tmp.append(csv_data.loc[date_key], sort=False)
+            df_tmp = pd.concat([df_tmp, csv_data.loc[date_key]], sort=False)
             # Smooths out date/time indexes that are close and should be 
             # considered the same sample time but may vary because of how 
             # separate instruments record the interval.
@@ -210,8 +210,6 @@ def write_files(prog_args, csv_data):
             # TODO: Add code to not hard code this
             df_tmp.set_index(['waterbody', 'station', 'sensor_serial_number'], append=True, inplace=True)
             df_duplicated = df_tmp.index.duplicated(keep='first')
-            if(df_tmp[df_duplicated].size > 0):
-                print(df_tmp[df_duplicated])
             df_tmp = df_tmp[~df_duplicated]
             #df_tmp = df_tmp[~df_tmp.index.duplicated(keep='first')]
         else:
